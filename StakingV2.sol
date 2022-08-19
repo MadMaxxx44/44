@@ -51,6 +51,7 @@ contract StakingV2 is Ownable, ReentrancyGuard{
         return block.timestamp - users[_token][msg.sender].timeStart;
     }
 
+    // 1 period = 60 sec, for easily testing
     function calculateReward(uint _amount, uint _stakingTime, uint _percent) public view returns(uint reward){
         uint periodPassed = _stakingTime/Time;
         return _amount*(_percent*periodPassed)/100;
@@ -82,7 +83,7 @@ contract StakingV2 is Ownable, ReentrancyGuard{
         PoolInfo storage pool = poolInfo[_token];
         UserInfo storage user = users[_token][msg.sender];
         require(block.timestamp - users[_token][msg.sender].timeStart >= users[_token][msg.sender].stakingTime, "Not enough time passed");
-        uint result = _calculateReward(user.timeStart, user.amount, pool.percentReward);
+        uint result = calculateReward(user.amount, user.stakingTime, pool.percentReward);
         IERC20(pool.token).transfer(msg.sender, user.amount);
         IERC20(RewardToken).mint(msg.sender, result);
         pool.poolBalance = pool.poolBalance - user.amount;
@@ -93,12 +94,5 @@ contract StakingV2 is Ownable, ReentrancyGuard{
         emit RewardClaimed(result);
         return result;                            
     }
-    
-    // 1 period = 60 sec, for easily testing
-    function _calculateReward(uint _timeStart, uint _amount, uint _percent) internal view returns(uint) {
-        uint periodPassed = (block.timestamp - _timeStart)/Time;
-        uint reward = _amount*(_percent*periodPassed)/100;
-        return reward;
-    }    
 }
 
