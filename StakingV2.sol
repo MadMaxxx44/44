@@ -12,7 +12,7 @@ contract StakingV2 is Ownable, ReentrancyGuard{
     uint public Time = 60;
 
     event NewStaker(uint _amount, uint _stakingTime);
-    event TokenChanged(address _token);
+    event TokenChanged(IERC20 _token);
     event RewardClaimed(uint result);
     event NewPoolCreated(address _token, uint _percentReward, uint _priceToStart);
     
@@ -95,4 +95,3 @@ contract StakingV2 is Ownable, ReentrancyGuard{
         return result;                            
     }
 }
-
