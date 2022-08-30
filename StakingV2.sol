@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import "contracts/IERC20.sol";
+import "./IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";                         
 import "@openzeppelin/contracts/access/Ownable.sol";                                              
 
 contract StakingV2 is Ownable, ReentrancyGuard{
     
-    address public RewardToken;             
+    IERC20 public RewardToken;             
     uint public TotalUsers;  
     uint public Time = 60;
 
@@ -32,7 +32,7 @@ contract StakingV2 is Ownable, ReentrancyGuard{
     mapping(address => mapping(address => UserInfo)) public users;
     mapping(address => PoolInfo) public poolInfo;
 
-    constructor(address _token) {
+    constructor(IERC20 _token) {
         RewardToken = _token;
     }
 
@@ -40,7 +40,7 @@ contract StakingV2 is Ownable, ReentrancyGuard{
         selfdestruct(_owner);
     }
 
-    function changeToken(address _token) public onlyOwner{    
+    function changeToken(IERC20 _token) public onlyOwner{    
         RewardToken = _token;
         emit TokenChanged(_token);
     } 
