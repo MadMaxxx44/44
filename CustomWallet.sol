@@ -1,116 +1,108 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.16;
+pragma solidity ^0.8.16;
 
-import "@openzeppelin/contracts/access/Ownable.sol"; 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "./libraries/TransferHelper.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol"; 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"; 
 
-contract CustomWallet is Ownable, ReentrancyGuard, Pausable {
-    using SafeERC20 for IERC20;  
+contract PublicSale is Ownable, ReentrancyGuard {   
+    using SafeERC20 for IERC20;
+    IERC20 public tokenForSale; 
+    uint public fee; 
+    bool public onSale;
+    
+    event PrePaymentSent(address sender);
+    event TokensSold(address buyer, uint amount); 
+    event NextTokenSaleAboutToStart();
 
-    event AllowanceChanged(address _spender, uint _amount);
-    event MoneySent(address _receiver, uint _amount);
-    event MoneyReceived(address _from, uint _amount);
-    event NewToken(address _token);
-
-    struct Token {
-        address Address;
-        uint balance; //balance of all tokens
-        mapping (address => uint) balances;  //balance of tokens for certain address 
+    struct SaleToken {
+        uint tokenForSaleBalance;
+        address seller;
+        uint limit;  // define how many tokens can buy 1 user
+        IERC20 tokenAddress; 
     }
 
-    mapping(address => uint) public allowance; 
-    mapping(address => Token) public tokens;
+    mapping(address => SaleToken) saleToken;
+    mapping(address => uint) prePayments;
+    mapping(address => IERC20) tokensForSale;
 
-    fallback() external {
+    address[] sellersQueoe; 
 
-    }
-    receive() external payable {
-        emit MoneyReceived(msg.sender, msg.value);
-    }
-
-    function addToken(address _token) public onlyOwner {
-        Token storage token = tokens[_token];
-        token.Address = _token;
-        token.balance = 0; 
-        emit NewToken(_token);
+    constructor() {
+        transferOwnership(msg.sender); 
     }
 
-    function depositToken(address _token, uint _amount) public nonReentrant {
-        Token storage token = tokens[_token];
-        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-        token.balance = token.balance + _amount;
-        token.balances[msg.sender] = token.balances[msg.sender] + _amount;
+    fallback() external {}
+    receive() external payable {}
+    
+    function queoe() public view returns(address[]memory) {
+        return sellersQueoe; 
     }
 
-    function withdraw(address _token, uint _amount) public nonReentrant {                
-        Token storage token = tokens[_token];
-        require(token.balances[msg.sender] >= _amount, "Not enough token balance");  //checks if user deposited tokens
-        IERC20(_token).safeTransfer(msg.sender, _amount);
-        token.balance = token.balance - _amount;
-        token.balances[msg.sender] = token.balances[msg.sender] - _amount;
+    function tokenLimit() public view returns(uint) {
+        return saleToken[sellersQueoe[0]].limit;
     }
 
-    function withdrawEther(address payable _to, uint _amount) public nonReentrant ownerOrAllowed(_amount) {
-        require(balanceOfEther() >= _amount, "Not enough money in contract");
-        if (msg.sender != owner()) {  //decrease allowance for allowed users but not for owner
-            decreaseAllowance(msg.sender, _amount);      
-            TransferHelper.safeTransferETH(_to, _amount); //safely transfer ether
-        }
-        else {
-            TransferHelper.safeTransferETH(_to, _amount);
-        }
-        emit MoneySent(_to, _amount);
+    function currentTokenBalance() public view returns(uint) {
+        return tokenForSale.balanceOf(address(this)); 
     }
 
-    function increaseAllowance(address _spender, uint256 _amount) public onlyOwner {
-        allowance[_spender] = allowance[_spender] + _amount;
-        emit AllowanceChanged(_spender, _amount);
+    function setFee(uint _fee) public onlyOwner {
+        fee = _fee; 
     }
 
-    function decreaseAllowance(address _spender, uint256 _amount) public ownerOrAllowed(_amount) {
-        if (msg.sender == owner()) { //owner can decrease allowance for anyone 
-            allowance[_spender] = allowance[_spender] - _amount;
-            emit AllowanceChanged(_spender, _amount);
-        }
-        else {
-            if(_spender == msg.sender) { //allowed user can decrease allowance only for himself 
-                allowance[_spender] = allowance[_spender] - _amount;
-                emit AllowanceChanged(_spender, _amount);
-            }
-            else {
-                revert("You can not decrease somebody's allowance"); 
-            }
-        }
-    }
-
-    modifier ownerOrAllowed(uint _amount) {
-        require(msg.sender == owner() || allowance[msg.sender] >= _amount, "You are not allowed");
-        _;
+    function sendPrepayment(IERC20 _feeToken, IERC20 _saleToken, uint _amount) public nonReentrant {
+        require(_amount == fee, "incorrect prepayment");              
+        IERC20(_feeToken).safeTransferFrom(msg.sender, owner(), _amount);         //user send prepayment contract add him in queoe
+        sellersQueoe.push(msg.sender);                                            //then we match _saleToken with msg.sender
+        tokensForSale[msg.sender] = _saleToken;                                   //and increase prepayment for msg.sender
+        prePayments[msg.sender] = prePayments[msg.sender] + fee;                  
+        emit PrePaymentSent(msg.sender);               
     }
     
-    //return total amount of token pool
-    function tokenBalance(address _token) public view returns(uint) {
-        return tokens[_token].balance;
-    }
-
-    //return total amount of deposited tokens for certain user
-    function userBalance(address _token) public view returns(uint) {
-        return tokens[_token].balances[msg.sender];
+    function putUpOnSale(IERC20 _token, uint _amount, uint _limit) public nonReentrant { 
+        SaleToken storage token = saleToken[msg.sender];
+        require(prePayments[msg.sender] > 0, "first you need to send prepayment");
+        require(tokensForSale[msg.sender] == _token, "wrong token address");      //after seller can put his tokens on sale
+        require(onSale != true, "try later");                                     //we check if he sent prepayment, and if he put on sale
+        require(sellersQueoe[0] == msg.sender, "not your turn yet");              //token that he defined before in sendPrepayment function
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);      //check if now his turn to sale, transfer amount                     
+        token.tokenForSaleBalance = token.tokenForSaleBalance + _amount;          //of his tokens and put contract onSale
+        token.seller = msg.sender;                                                
+        token.limit = _limit;                                                     
+        token.tokenAddress = _token;                                              
+        tokenForSale = _token;                                                     
+        onSale = true;                                                             
     }
     
-    //return amount of all ether in contract
-    function balanceOfEther() public view returns(uint) {
-        return address(this).balance; 
+    function buyTokens(IERC20 _token, uint _amount) public nonReentrant {         
+        SaleToken storage token = saleToken[sellersQueoe[0]];                      //users buy tokens for other tokens 1:1
+        require(_amount <= token.limit, "use tokenLimit function");                //they transfer tokens directly to seller
+        require(_token != tokenForSale, "incorrect token");                        //after smartcontract transfer sale tokens to msg.sender address
+        IERC20(_token).safeTransferFrom(msg.sender, token.seller, _amount);        //if there is no tokens on balance, we remove seller from array, and put 
+        IERC20(token.tokenAddress).safeTransfer(msg.sender, _amount);              //next seller on his place, after we clear info about sold tokens
+        token.tokenForSaleBalance = token.tokenForSaleBalance - _amount;           //so next seller can put his tokens on sale            
+        if (token.tokenForSaleBalance == 0){                                             
+            tokenForSale = IERC20(0x0000000000000000000000000000000000000000);
+            prePayments[token.seller] = prePayments[token.seller] - fee;
+            onSale = false; 
+            delete tokensForSale[token.seller];
+            delete saleToken[sellersQueoe[0]];                                     
+            _remove(sellersQueoe, 0);   
+            emit NextTokenSaleAboutToStart(); 
+        }
+        else {
+            emit TokensSold(msg.sender, _amount);                                  
+        }
     }
 
-    function pause() private whenNotPaused{
-        _pause();
-    }
-    function unpause() private whenPaused{
-        _unpause();
+    function _remove(address[]storage arr,uint _index) internal returns(address[]storage) {
+        require(_index < arr.length, "index out of bound");
+        for (uint i = _index; i < arr.length - 1; i++) {
+            arr[i] = arr[i + 1];
+        }
+        arr.pop();
+        return arr;
     }
 }
