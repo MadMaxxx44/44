@@ -38,7 +38,7 @@ contract Staking is Ownable, ReentrancyGuard {
     }
   
     mapping(IERC20 => mapping(address => UserInfo)) public users;
-    mapping(IERC20 => PoolInfo) public poolInfo;
+    mapping(IERC20 => PoolInfo) public pools;
     mapping(uint => PeriodInfo) public periods;
 
     constructor() {}
@@ -83,14 +83,14 @@ contract Staking is Ownable, ReentrancyGuard {
     }
 
     function grantToken(IERC20 _token, uint _amount) public {
-        PoolInfo storage pool = poolInfo[_token];
+        PoolInfo storage pool = pools[_token];
         IERC20(pool.token).safeTransferFrom(msg.sender, address(this), _amount); 
         pool.poolGrant = pool.poolGrant + _amount; 
         emit TokenGranted(_token, _amount); 
     }
 
     function poolInstance(IERC20 _token, uint _priceToStart, uint _poolLimit, uint _userLimit) public onlyOwner{
-        PoolInfo storage pool = poolInfo[_token];
+        PoolInfo storage pool = pools[_token];
         pool.token = _token;
         pool.priceToStart = _priceToStart;
         pool.poolLimit = _poolLimit;
@@ -99,7 +99,7 @@ contract Staking is Ownable, ReentrancyGuard {
     }
     
     function stake(uint _amount, IERC20 _token, uint _periodNumber) public nonReentrant {
-        PoolInfo storage pool = poolInfo[_token];
+        PoolInfo storage pool = pools[_token];
         UserInfo storage user = users[_token][msg.sender];
         require(_periodNumber <= periodsCount && _periodNumber != 0, "incorrect period");
         require(_amount >= pool.priceToStart, "Not enough amount to start");
@@ -116,7 +116,7 @@ contract Staking is Ownable, ReentrancyGuard {
     }
 
     function unstake(IERC20 _token) public nonReentrant {
-        PoolInfo storage pool = poolInfo[_token];
+        PoolInfo storage pool = pools[_token];
         UserInfo storage user = users[_token][msg.sender];
         uint result = calculateReward(_token, user.period, user.amount);
         require(pool.poolGrant >= result, "token not granted"); 
