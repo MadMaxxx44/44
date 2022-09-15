@@ -26,7 +26,7 @@ contract Staking is Ownable, ReentrancyGuard {
     }
 
     struct UserInfo {
-        uint amount;
+        uint amount; //how many tokens user stake
         uint timeStart;
         uint period;
     }
@@ -105,7 +105,7 @@ contract Staking is Ownable, ReentrancyGuard {
         require(_amount >= pool.priceToStart, "Not enough amount to start");
         require(pool.poolBalance != pool.poolLimit, "tokens sold out");
         require(pool.poolBalance + _amount <= pool.poolLimit, "try to reduce amount");
-        require(pool.userLimit <= _amount, "amount exceeds limit for user"); 
+        require(_amount <= pool.userLimit, "amount exceeds limit for user"); 
         IERC20(pool.token).safeTransferFrom(msg.sender, address(this), _amount);
         user.amount = _amount;
         user.timeStart = block.timestamp;
