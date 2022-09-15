@@ -15,6 +15,8 @@ contract Staking is Ownable, ReentrancyGuard {
     event RewardClaimed(uint result);
     event NewPoolCreated(IERC20 _token, uint _priceToStart);
     event TokenGranted(IERC20 _token, uint _amount); 
+    event PeriodCreated(uint _periodNumber, uint _periodTime, uint _percentReward); 
+    event PeriodDeleted(uint _periodNumber); 
     
     struct PoolInfo {
         IERC20 token;   //token address          
@@ -33,7 +35,7 @@ contract Staking is Ownable, ReentrancyGuard {
 
     struct PeriodInfo {
         uint periodNumber;
-        uint periodTime;
+        uint periodTime; //for how long period lasts in seconds 
         uint percentReward;
     }
   
@@ -67,28 +69,30 @@ contract Staking is Ownable, ReentrancyGuard {
     function selfDestruct(address payable _owner) public onlyOwner{
         selfdestruct(_owner);
     }
-
+    //for example _periodNumber = 1 day in this case we can set _periodTime to 86 400
     function addPeriods(uint _periodNumber, uint _periodTime, uint _percentReward) public onlyOwner {
-        require(_periodNumber != 0, "incorrect period number"); 
         PeriodInfo storage period = periods[_periodNumber];
+        require(_periodNumber != 0, "incorrect period number"); 
         period.periodNumber = _periodNumber;
         period.periodTime = _periodTime;
         period.percentReward = _percentReward; 
         periodsCount++;
+        emit PeriodCreated(_periodNumber, _periodTime, _percentReward); 
     }
-
+    //owner can delete periods
     function delPeriod(uint _numberOfPeriod) public onlyOwner {
         delete periods[_numberOfPeriod];
         periodsCount--; 
+        emit PeriodDeleted(_numberOfPeriod);
     }
-
+    //grant token first and then users can receive reward for staking
     function grantToken(IERC20 _token, uint _amount) public {
         PoolInfo storage pool = pools[_token];
         IERC20(pool.token).safeTransferFrom(msg.sender, address(this), _amount); 
         pool.poolGrant = pool.poolGrant + _amount; 
         emit TokenGranted(_token, _amount); 
     }
-
+    //owner create pool with different params 
     function poolInstance(IERC20 _token, uint _priceToStart, uint _poolLimit, uint _userLimit) public onlyOwner{
         PoolInfo storage pool = pools[_token];
         pool.token = _token;
@@ -101,10 +105,10 @@ contract Staking is Ownable, ReentrancyGuard {
     function stake(uint _amount, IERC20 _token, uint _periodNumber) public nonReentrant {
         PoolInfo storage pool = pools[_token];
         UserInfo storage user = users[_token][msg.sender];
-        require(_periodNumber <= periodsCount && _periodNumber != 0, "incorrect period");
+        require(_periodNumber <= periodsCount && _periodNumber != 0, "incorrect period");  
         require(_amount >= pool.priceToStart, "Not enough amount to start");
-        require(pool.poolBalance != pool.poolLimit, "tokens sold out");
-        require(pool.poolBalance + _amount <= pool.poolLimit, "try to reduce amount");
+        require(pool.poolBalance != pool.poolLimit, "tokens sold out"); //pop when pool balance is full 
+        require(pool.poolBalance + _amount <= pool.poolLimit, "try to reduce amount"); //prevent overflow of balance
         require(_amount <= pool.userLimit, "amount exceeds limit for user"); 
         IERC20(pool.token).safeTransferFrom(msg.sender, address(this), _amount);
         user.amount = _amount;
