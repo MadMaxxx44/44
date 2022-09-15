@@ -43,8 +43,6 @@ contract Staking is Ownable, ReentrancyGuard {
     mapping(IERC20 => PoolInfo) public pools;
     mapping(uint => PeriodInfo) public periods;
 
-    constructor() {}
-
     fallback() external {}
     receive() external payable {}
  
