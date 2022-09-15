@@ -67,7 +67,7 @@ contract Staking is Ownable, ReentrancyGuard {
     function selfDestruct(address payable _owner) public onlyOwner{
         selfdestruct(_owner);
     }
-    //for example _periodNumber = 1 day in this case we can set _periodTime to 86 400
+    //for example _periodNumber = 1 day in this case we can set _periodTime to 86 400 seconds
     function addPeriods(uint _periodNumber, uint _periodTime, uint _percentReward) public onlyOwner {
         PeriodInfo storage period = periods[_periodNumber];
         require(_periodNumber != 0, "incorrect period number"); 
