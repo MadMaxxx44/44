@@ -55,13 +55,13 @@ contract StakingPerpetual is Ownable, ReentrancyGuard {
     function calculateReward(IERC20 _token) public view returns(uint) {
         PoolInfo storage pool = poolInfo[_token];
         UserInfo storage user = users[_token][msg.sender];
-        require(user.amount > 0, "You do not have staked assets");
+        require(user.amount > 0, "you do not have staked assets");
         return user.amount*pool.percentReward/100 * timePassed(_token) / Period;
     }
     //calculate passed time for staker 
     function timePassed(IERC20 _token) public view returns(uint) {
         UserInfo storage user = users[_token][msg.sender];
-        require(user.amount > 0, "You do not have staked assets");
+        require(user.amount > 0, "you do not have staked assets");
         return block.timestamp - user.timeStart; 
     }
     
@@ -88,7 +88,7 @@ contract StakingPerpetual is Ownable, ReentrancyGuard {
         require(Period >= 60, "incorrect period");
         require(pool.poolBalance != pool.poolLimit, "sold out"); 
         require(pool.poolBalance + _amount <= pool.poolLimit, "reduce amount"); //prevents overflow of pool limit
-        require(_amount >= pool.priceToStart, "Not enough amount to start");
+        require(_amount >= pool.priceToStart, "not enough amount to start");
         require(user.amount == 0, "you can not stake again"); 
         IERC20(pool.token).safeTransferFrom(msg.sender, address(this), _amount);
         user.amount = user.amount + _amount;
