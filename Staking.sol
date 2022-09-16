@@ -49,7 +49,7 @@ contract Staking is Ownable, ReentrancyGuard {
     // calculate passed time of staking for user
     function calculatePassedTime(IERC20 _token) public view returns(uint timePassed) {
         UserInfo storage user = users[_token][msg.sender];
-        require(user.amount > 0, "You do not have staked assets");
+        require(user.amount > 0, "you do not have staked assets");
         return block.timestamp - user.timeStart;
     }
     
@@ -114,7 +114,7 @@ contract Staking is Ownable, ReentrancyGuard {
         }
         else {
             require(_periodNumber <= periodsCount && _periodNumber != 0, "incorrect period");  
-            require(_amount >= pool.priceToStart, "Not enough amount to start");
+            require(_amount >= pool.priceToStart, "not enough amount to start");
             require(pool.poolBalance != pool.poolLimit, "tokens sold out"); //pop when pool balance is full 
             require(_amount <= pool.userLimit, "amount exceeds limit for user");
             IERC20(pool.token).safeTransferFrom(msg.sender, address(this), _amount);
@@ -132,7 +132,7 @@ contract Staking is Ownable, ReentrancyGuard {
         UserInfo storage user = users[_token][msg.sender];
         uint reward = calculateReward(_token, user.period, user.amount);
         require(pool.poolGrant >= reward, "token not granted"); 
-        require(calculatePassedTime(_token) >= periods[user.period].periodTime, "Not enough time passed");
+        require(calculatePassedTime(_token) >= periods[user.period].periodTime, "not enough time passed");
         IERC20(pool.token).safeTransfer(msg.sender, user.amount + reward);
         pool.poolBalance = pool.poolBalance - user.amount;
         pool.poolGrant = pool.poolGrant - reward; 
