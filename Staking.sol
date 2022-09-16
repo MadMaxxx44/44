@@ -107,7 +107,7 @@ contract Staking is Ownable, ReentrancyGuard {
         require(_amount >= pool.priceToStart, "Not enough amount to start");
         require(pool.poolBalance != pool.poolLimit, "tokens sold out"); //pop when pool balance is full 
         require(pool.poolBalance + _amount <= pool.poolLimit, "try to reduce amount"); //prevent overflow of balance
-        require(_amount <= pool.userLimit, "amount exceeds limit for user"); 
+        require(_amount <= pool.userLimit  && _amount <= _amount + pool.userLimit, "amount exceeds limit for user"); //prevent overflow of user limit
         IERC20(pool.token).safeTransferFrom(msg.sender, address(this), _amount);
         user.amount = _amount;
         user.timeStart = block.timestamp;
