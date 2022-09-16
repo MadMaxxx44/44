@@ -84,7 +84,7 @@ contract Staking is Ownable, ReentrancyGuard {
         emit PeriodDeleted(_numberOfPeriod);
     }
     //grant token first and then users can receive reward for staking
-    function grantToken(IERC20 _token, uint _amount) public {
+    function grantToken(IERC20 _token, uint _amount) public nonReentrant {
         PoolInfo storage pool = pools[_token];
         IERC20(pool.token).safeTransferFrom(msg.sender, address(this), _amount); 
         pool.poolGrant = pool.poolGrant + _amount; 
