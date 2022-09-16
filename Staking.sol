@@ -120,16 +120,16 @@ contract Staking is Ownable, ReentrancyGuard {
     function unstake(IERC20 _token) public nonReentrant {
         PoolInfo storage pool = pools[_token];
         UserInfo storage user = users[_token][msg.sender];
-        uint result = calculateReward(_token, user.period, user.amount);
-        require(pool.poolGrant >= result, "token not granted"); 
+        uint reward = calculateReward(_token, user.period, user.amount);
+        require(pool.poolGrant >= reward, "token not granted"); 
         require(calculatePassedTime(_token) >= periods[user.period].periodTime, "Not enough time passed");
-        IERC20(pool.token).safeTransfer(msg.sender, user.amount + result);
+        IERC20(pool.token).safeTransfer(msg.sender, user.amount + reward);
         pool.poolBalance = pool.poolBalance - user.amount;
-        pool.poolGrant = pool.poolGrant - result; 
+        pool.poolGrant = pool.poolGrant - reward; 
         user.amount = 0;
         user.timeStart = 0;
         user.period = 0;
         totalUsers--;
-        emit RewardClaimed(result);                           
+        emit RewardClaimed(reward);                           
     }
 }
