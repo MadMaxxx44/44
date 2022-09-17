@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract PublicSale is Ownable, ReentrancyGuard {   
     using SafeERC20 for IERC20;
-    IERC20 public tokenForSale; 
+    IERC20 public tokenForSale; //token that now on sale
     uint public fee; 
     bool public onSale;
     
@@ -56,7 +56,7 @@ contract PublicSale is Ownable, ReentrancyGuard {
         require(_amount == fee, "incorrect prepayment");              
         IERC20(_feeToken).safeTransferFrom(msg.sender, owner(), _amount);         //user send prepayment contract add him in queoe
         sellersQueoe.push(msg.sender);                                            //then we match _saleToken with msg.sender
-        tokensForSale[msg.sender] = _saleToken;                                   //and increase prepayment for msg.sender
+        tokensForSale[msg.sender] = _saleToken;                                   //and increase prepayment for msg.sender on fee
         prePayments[msg.sender] = prePayments[msg.sender] + fee;                  
         emit PrePaymentSent(msg.sender);               
     }
@@ -96,7 +96,7 @@ contract PublicSale is Ownable, ReentrancyGuard {
             emit TokensSold(msg.sender, _amount);                                  
         }
     }
-
+    //moves every index one step further and del last index   
     function _remove(address[]storage arr,uint _index) internal returns(address[]storage) {
         require(_index < arr.length, "index out of bound");
         for (uint i = _index; i < arr.length - 1; i++) {
