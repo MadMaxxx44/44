@@ -103,7 +103,9 @@ contract Staking is Ownable, ReentrancyGuard {
     function stake(uint _amount, IERC20 _token, uint _periodNumber) public nonReentrant {
         PoolInfo storage pool = pools[_token];
         UserInfo storage user = users[_token][msg.sender];
+        PeriodInfo storage period = periods[_periodNumber]; 
         require(pool.poolBalance + _amount <= pool.poolLimit, "try to reduce amount"); //prevent overflow of balance
+        require(period.periodTime > 0 && period.percentReward > 0, "try another period"); //check for period params
         if(user.amount > 0) {
             require(calculatePassedTime(_token) <= periods[user.period].periodTime, "period is over, unstake your tokens"); 
             require(_amount + user.amount <= pool.userLimit, "incorrect amount");
