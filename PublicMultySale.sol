@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol"; 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"; 
 
-contract PublicSale is Ownable, ReentrancyGuard {   
+contract PublicMultySale is Ownable, ReentrancyGuard {   
     using SafeERC20 for IERC20; 
     uint public Fee; //how many % contract take from seller 
     event PrePaymentSent(address sender);
@@ -28,6 +28,7 @@ contract PublicSale is Ownable, ReentrancyGuard {
 
     constructor() {
         transferOwnership(msg.sender); 
+        Fee = 10; //for testing 
     }
 
     fallback() external {}
@@ -64,8 +65,8 @@ contract PublicSale is Ownable, ReentrancyGuard {
     }
     
     function addToken(uint _tokenBalance, uint _limitForUser, IERC20 _tokenAddress) public nonReentrant {
-        require(prePayments[msg.sender] == calculatePrepayment(_tokenBalance), "incorrect token balance"); 
-        require(_limitForUser <= _tokenBalance, "incorrect limit"); 
+        require(prePayments[msg.sender] == calculatePrepayment(_tokenBalance), "incorrect token balance or you need to send prepayment");
+        require(_limitForUser <= _tokenBalance, "incorrect limit");  
         IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _tokenBalance); 
         Tokens storage token = tokens[_tokenAddress];
         token.tokenBalance = _tokenBalance;
