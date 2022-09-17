@@ -1,12 +1,12 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol"; 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
-import "./TransferHelper.sol";
+import "./libraries/TransferHelper.sol";
 
 contract CustomWallet is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;  
@@ -30,10 +30,24 @@ contract CustomWallet is Ownable, ReentrancyGuard, Pausable {
         emit MoneyReceived(msg.sender, msg.value);
     }
 
+    modifier ownerOrAllowed(uint _amount) {
+        require(msg.sender == owner() || allowance[msg.sender] >= _amount, "You are not allowed");
+        _;
+    }
+
+    //return total amount of deposited tokens for certain user
+    function userBalance(address _token) public view returns(uint) {
+        return tokens[_token].balances[msg.sender];
+    }
+    
+    //return amount of all ether in contract
+    function balanceOfEther() public view returns(uint) {
+        return address(this).balance; 
+    }
+
     function addToken(address _token) public onlyOwner {
         Token storage token = tokens[_token];
         token.Address = _token;
-        token.balance = 0; 
         emit NewToken(_token);
     }
 
@@ -75,7 +89,7 @@ contract CustomWallet is Ownable, ReentrancyGuard, Pausable {
             emit AllowanceChanged(_spender, _amount);
         }
         else {
-            if(_spender == msg.sender) { //allowed user can decrease allowance only for himself 
+            if(msg.sender == _spender) { //allowed user can decrease allowance only for himself 
                 allowance[_spender] = allowance[_spender] - _amount;
                 emit AllowanceChanged(_spender, _amount);
             }
@@ -83,26 +97,6 @@ contract CustomWallet is Ownable, ReentrancyGuard, Pausable {
                 revert("You can not decrease somebody's allowance"); 
             }
         }
-    }
-
-    modifier ownerOrAllowed(uint _amount) {
-        require(msg.sender == owner() || allowance[msg.sender] >= _amount, "You are not allowed");
-        _;
-    }
-    
-    //return total amount of token pool
-    function tokenBalance(address _token) public view returns(uint) {
-        return tokens[_token].balance;
-    }
-
-    //return total amount of deposited tokens for certain user
-    function userBalance(address _token) public view returns(uint) {
-        return tokens[_token].balances[msg.sender];
-    }
-    
-    //return amount of all ether in contract
-    function balanceOfEther() public view returns(uint) {
-        return address(this).balance; 
     }
 
     function pause() private whenNotPaused{
