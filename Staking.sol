@@ -122,7 +122,7 @@ contract Staking is Ownable, ReentrancyGuard {
             IERC20(pool.token).safeTransferFrom(msg.sender, address(this), _amount);
             user.amount = _amount;
             user.timeStart = block.timestamp;
-            user.period = periods[_periodNumber].periodNumber; 
+            user.period = _periodNumber; 
             pool.poolBalance = pool.poolBalance + _amount;
             totalUsers++;
             emit NewStaker(_amount, _periodNumber);
