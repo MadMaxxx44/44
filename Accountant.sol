@@ -58,9 +58,7 @@ contract Accountant is Ownable {
     modifier contains (string memory what, string memory where) {
     bytes memory whatBytes = bytes (what);
     bytes memory whereBytes = bytes (where);
-
     require(whereBytes.length >= whatBytes.length, "incorrect catigory name");
-
     bool found = false;
     for (uint i = 0; i <= whereBytes.length - whatBytes.length; i++) {
         bool flag = true;
