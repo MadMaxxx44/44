@@ -7,14 +7,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract Accountant is Ownable { 
     //                 0         1         2
     enum incomeName {salary, investings, other} 
+    string[] catigorieNames;
 
     struct Catigory {
         string name;
         mapping (address => int) catigorySpendings; 
     }
 
-    string[] catigorieNames; 
-    
     mapping(address => mapping (incomeName => int)) incomes; 
     mapping (string => Catigory) catigories;//Catigories names for example: health, food, clothes
     mapping(address => int) balances;
@@ -54,8 +53,7 @@ contract Accountant is Ownable {
         require(_amount > 0, "amount can not be 0 or less"); 
         catigories[_catigoryName].catigorySpendings[msg.sender] -= _amount;
         balances[msg.sender] -= _amount;   
-    } 
-
+    }
     //checks if catigorie name exists
     modifier contains (string memory what, string memory where) {
     bytes memory whatBytes = bytes (what);
