@@ -6,34 +6,45 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Accountant is Ownable { 
     //                 0         1         2
-    enum incomeName {salary, investings, other}
-    int public currentBalance; 
+    enum incomeName {salary, investings, other} 
 
     struct Catigory {
         string name;
-        int catigorySpendings; 
+        mapping (address => int) catigorySpendings; 
     }
 
-    string[] catigorieName; 
- 
-    mapping (incomeName => int) public incomes;
-    //Catigories names: health, food, clothes 
-    mapping (string => Catigory) public catigories;
-
+    string[] catigorieNames; 
+    
+    mapping(address => mapping (incomeName => int)) incomes; 
+    mapping (string => Catigory) catigories;//Catigories names for example: health, food, clothes
+    mapping(address => int) balances;
+    //to look how many user spend for some category
+    function viewCategorySpendings(string calldata _catigoryName) external view returns(int) {
+        return catigories[_catigoryName].catigorySpendings[msg.sender]; 
+    } 
+    //to look msg.sender balance(incomes - spendings)
+    function viewBalance() external view returns(int) {
+        return balances[msg.sender]; 
+    }
+    //to look entire balance of salary/investings/other income 
+    function viewIncome(incomeName _incomeName) external view returns(int) {
+        return incomes[msg.sender][_incomeName]; 
+    }
+    //to look all existing categories 
     function viewCatigories() external view returns(string[] memory){
-        return catigorieName; 
+        return catigorieNames; 
     } 
     
     function addCategory(string calldata _name) external onlyOwner {
         Catigory storage catigory = catigories[_name];
         catigory.name = _name; 
-        catigorieName.push(_name);
+        catigorieNames.push(_name);
     }
     //_incomeName: 0 = salary, 1 = investings, 2 = other
     function addIncome(int _amount, incomeName _incomeName) external {
         require(_amount > 0, "income can not be 0 or less");
-        incomes[_incomeName] += _amount;
-        currentBalance += _amount;  
+        incomes[msg.sender][_incomeName] += _amount;
+        balances[msg.sender] += _amount;   
     }
 
     function addSpending(
@@ -41,9 +52,10 @@ contract Accountant is Ownable {
         string calldata _catigoryName
         ) contains(_catigoryName, catigories[_catigoryName].name) external { 
         require(_amount > 0, "amount can not be 0 or less"); 
-        catigories[_catigoryName].catigorySpendings -= _amount; 
-        currentBalance -= _amount;  
+        catigories[_catigoryName].catigorySpendings[msg.sender] -= _amount;
+        balances[msg.sender] -= _amount;   
     } 
+
     //checks if catigorie name exists
     modifier contains (string memory what, string memory where) {
     bytes memory whatBytes = bytes (what);
