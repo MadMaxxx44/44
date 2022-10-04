@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./1155.sol"; //Dota2Collection
-import "./721.sol"; //FlowerNFT721
+import "./721.sol"; //Flower721NFT
 
 contract NFTMarketplace is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -110,15 +110,13 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
     }
 
     function _matchType(string memory _token)internal pure returns(Type) {
-        if (keccak256(abi.encodePacked(_token)) == keccak256(abi.encodePacked("ERC721"))){
+        if (keccak256(abi.encodePacked(_token)) == keccak256(abi.encodePacked("ERC721"))) {
             return Type.ERC721;
         }
-        else if (keccak256(abi.encodePacked(_token)) == keccak256(abi.encodePacked("ERC1155"))){
+        else if (keccak256(abi.encodePacked(_token)) == keccak256(abi.encodePacked("ERC1155"))) {
             return Type.ERC1155;
         }
-        else{
-            revert("Wrong name of token type");
-        }
+        else{ revert("wrong name of token type"); }
     }
 
     function onERC1155Received(address, address, uint256, uint256, bytes memory) public virtual returns (bytes4) {
