@@ -15,9 +15,9 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
     address public paymentToken;
     uint public fee;
 
-    event TokenOnSale(uint count);
-    event SaleClosed(uint count);
-    event TokenSold(uint count, uint amount);  
+    event TokenOnSale(uint nonce);
+    event SaleClosed(uint nonce);
+    event TokenSold(uint nonce, uint amount);  
 
     struct NFTSale {
         address seller;
