@@ -16,8 +16,11 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
     uint public fee;
 
     event TokenOnSale(uint nonce);
+    event TokenSold(uint nonce, uint amount);
     event SaleClosed(uint nonce);
-    event TokenSold(uint nonce, uint amount);  
+    event BatchTokensOnSale(uint nonce);  
+    event BatchTokensSold(uint nonce); 
+    event BatchSaleClosed(uint _nonce);
 
     struct NFTSale {
         address seller;
@@ -29,13 +32,24 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
         Status status;
     }
 
+    struct BatchNFTSale {
+        address seller;
+        address nftAddress;
+        uint[] tokenIds; 
+        uint[] amounts;
+        uint price;
+        Type tokenType;
+        Status status;
+    }
+
     mapping (uint => NFTSale) public tokens;
+    mapping (uint => BatchNFTSale) public batchTokens; 
     mapping (address => bool) public sellers; 
 
     constructor(address _paymentToken) {
         nonce = 1; //will count how many orders contract has
         paymentToken = _paymentToken;
-        fee = 10; 
+        fee = 10;  
     }
 
     modifier onlySellerOrOwner() {
@@ -43,7 +57,15 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
         _;
     }
 
-    function sellNFT(address _seller, address _nftAddress, uint _tokenId, uint _amount, uint _price, string calldata _tokenType) external nonReentrant {
+    function viewBatchIds() public view returns(uint[] memory) {
+        return batchTokens[nonce-1].tokenIds; 
+    }
+
+    function viewBatchAmounts() public view returns(uint[] memory) {
+        return batchTokens[nonce-1].amounts; 
+    }
+
+    function sellSingleNFT(address _seller, address _nftAddress, uint _tokenId, uint _amount, uint _price, string calldata _tokenType) external nonReentrant {
         NFTSale storage token = tokens[nonce];
         token.seller = _seller;
         token.nftAddress = _nftAddress;
@@ -64,7 +86,7 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
         nonce++;
     }
 
-    function buyNFT(uint _nonce, uint _amount) external nonReentrant {
+    function buySingleNFT(uint _nonce, uint _amount) external nonReentrant {
         NFTSale storage token = tokens[_nonce];
         require(token.amount >= _amount, "incorrect token amount"); 
         IERC20(paymentToken).safeTransferFrom(msg.sender, address(this), token.price * _amount);
@@ -96,9 +118,46 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
             IERC1155(token.nftAddress).safeTransferFrom(address(this), msg.sender, token.tokenId, token.amount, "");
         }
         else { revert("something went wrong"); }
-        sellers[token.seller] = false;
-        delete tokens[_nonce];
+        sellers[token.seller] = false; 
+        delete tokens[_nonce]; 
         emit SaleClosed(_nonce);
+    }
+
+    function sellBatchNFTs(address _seller, address _nftAddress, uint[] memory _tokenIds, uint[] memory _amounts, uint _price) external nonReentrant {
+        BatchNFTSale storage token1155 = batchTokens[nonce];
+        token1155.seller = _seller;
+        token1155.nftAddress = _nftAddress;
+        token1155.tokenIds = _tokenIds;
+        token1155.amounts = _amounts;
+        token1155.price = _price;
+        token1155.tokenType = Type.ERC1155;
+        token1155.status = Status.Listed;
+        IERC1155(_nftAddress).safeBatchTransferFrom(msg.sender, address(this), _tokenIds, _amounts, "");
+        sellers[msg.sender] = true;
+        emit BatchTokensOnSale(nonce);
+        nonce++; 
+    }
+
+    function buyBatchNFTs(uint _nonce) external nonReentrant {
+        BatchNFTSale storage token1155 = batchTokens[_nonce];
+        IERC20(paymentToken).safeTransferFrom(msg.sender, address(this), _calculate1155amounts()*token1155.price);
+        uint bounty = token1155.price * _calculate1155amounts() - (((_calculate1155amounts()*token1155.price)/100) * fee); 
+        IERC20(paymentToken).safeTransfer(token1155.seller, bounty);
+        IERC1155(token1155.nftAddress).safeBatchTransferFrom(address(this), msg.sender, viewBatchIds(), viewBatchAmounts(), "");
+        sellers[token1155.seller] = false;
+        delete tokens[_nonce];
+        emit BatchTokensSold(_nonce);
+    }
+
+    function closeBatchSale(uint _nonce) external onlySellerOrOwner nonReentrant {
+        BatchNFTSale storage token1155 = batchTokens[_nonce];
+        if (token1155.tokenType == Type.ERC1155) {
+            IERC1155(token1155.nftAddress).safeBatchTransferFrom(address(this), msg.sender, viewBatchIds(), viewBatchAmounts(), "");
+        }
+        else { revert("something went wrong"); }
+        sellers[token1155.seller] = false; 
+        delete batchTokens[_nonce]; 
+        emit BatchSaleClosed(_nonce);
     }
 
     function changePaymentToken(address _token) external onlyOwner {
@@ -117,6 +176,14 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
             return Type.ERC1155;
         }
         else{ revert("wrong name of token type"); }
+    }
+
+    function _calculate1155amounts() internal view returns(uint) {
+        uint result = 0; 
+        for (uint i = 0; i < batchTokens[nonce-1].amounts.length; i++) { 
+            result = result + batchTokens[nonce-1].amounts[i]; 
+        }
+        return result; 
     }
 
     function onERC1155Received(address, address, uint256, uint256, bytes memory) public virtual returns (bytes4) {
