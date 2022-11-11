@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+//deployed at goerli 0xD82A40c550e7f59B1E1D443F53809d2b703dFb33
+
+pragma solidity ^0.8.17;      
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol"; 
@@ -53,39 +55,40 @@ contract PublicSale is Ownable, ReentrancyGuard {
     }
 
     function sendPrepayment(IERC20 _feeToken, IERC20 _saleToken, uint _amount) public nonReentrant {
-        require(_amount == fee, "incorrect prepayment");              
+        require(_amount >= fee, "incorrect prepayment"); 
+        require(prePayments[msg.sender] < fee, "you already sent prepayment");              
         IERC20(_feeToken).safeTransferFrom(msg.sender, owner(), _amount);         //user send prepayment contract add him in queoe
         sellersQueoe.push(msg.sender);                                            //then we match _saleToken with msg.sender
-        tokensForSale[msg.sender] = _saleToken;                                   //and increase prepayment for msg.sender on fee
-        prePayments[msg.sender] = prePayments[msg.sender] + fee;                  
+        tokensForSale[msg.sender] = _saleToken;                                   //and increase prepayment for msg.sender on _amount
+        prePayments[msg.sender] = prePayments[msg.sender] + _amount;                  
         emit PrePaymentSent(msg.sender);               
     }
-    
-    function putUpOnSale(IERC20 _token, uint _amount, uint _limit) public nonReentrant { 
+
+    function putUpOnSale(uint _amount, uint _limit) public nonReentrant { 
         SaleToken storage token = saleToken[msg.sender];
-        require(prePayments[msg.sender] > 0, "first you need to send prepayment");
-        require(tokensForSale[msg.sender] == _token, "wrong token address");      //after seller can put his tokens on sale
-        require(onSale != true, "try later");                                     //we check if he sent prepayment, and if he put on sale
-        require(sellersQueoe[0] == msg.sender, "not your turn yet");              //token that he defined before in sendPrepayment function
-        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);      //check if now his turn to sale, transfer amount                     
-        token.tokenForSaleBalance = token.tokenForSaleBalance + _amount;          //of his tokens and put contract onSale
+        require(_amount > 0, "you can not sell 0 tokens"); 
+        require(prePayments[msg.sender] >= fee, "first you need to send prepayment");                //after seller can put his tokens on sale                                                                                 
+        require(onSale != true, "try later");                                                        //we check if he sent prepayment
+        require(sellersQueoe[0] == msg.sender, "not your turn yet");                                 //check if now his turn to sale, transfer amount
+        IERC20(tokensForSale[msg.sender]).safeTransferFrom(msg.sender, address(this), _amount);      //of his tokens and put contract onSale                     
+        token.tokenForSaleBalance = _amount;                                                         
         token.seller = msg.sender;                                                
         token.limit = _limit;                                                     
-        token.tokenAddress = _token;                                              
-        tokenForSale = _token;                                                     
+        token.tokenAddress = tokensForSale[msg.sender];                                              
+        tokenForSale = tokensForSale[msg.sender];                                                     
         onSale = true;                                                             
     }
     
     function buyTokens(IERC20 _token, uint _amount) public nonReentrant {         
         SaleToken storage token = saleToken[sellersQueoe[0]];                      //users buy tokens for other tokens 1:1
         require(_amount <= token.limit, "use tokenLimit function");                //they transfer tokens directly to seller
-        require(_token != tokenForSale, "incorrect token");                        //after smartcontract transfer sale tokens to msg.sender address
-        IERC20(_token).safeTransferFrom(msg.sender, token.seller, _amount);        //if there is no tokens on balance, we remove seller from array, and put 
+        require(_token != tokenForSale, "incorrect token");                        //after smartcontract transfer sale tokens to msg.sender 
+        IERC20(_token).safeTransferFrom(msg.sender, token.seller, _amount);        //if all tokens are sold, we remove seller from array, and put 
         IERC20(token.tokenAddress).safeTransfer(msg.sender, _amount);              //next seller on his place, after we clear info about sold tokens
         token.tokenForSaleBalance = token.tokenForSaleBalance - _amount;           //so next seller can put his tokens on sale            
         if (token.tokenForSaleBalance == 0){                                             
             tokenForSale = IERC20(0x0000000000000000000000000000000000000000);
-            prePayments[token.seller] = prePayments[token.seller] - fee;
+            prePayments[token.seller] = 0;
             onSale = false; 
             delete tokensForSale[token.seller];
             delete saleToken[sellersQueoe[0]];                                     
