@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+//deployed at goerli 0x4056D47940f20C31659613F7e66E0983B6728D74
+
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol"; 
