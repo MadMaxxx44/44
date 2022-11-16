@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-//deployed at goerli 0xf658441e45A3d00049814726d775362e14Ecc718
+//deployed at goerli 0xc7fb5C47fbfd482e003A5a17980D5e2f941b3Dd7
 
 pragma solidity 0.8.17;
 
@@ -9,8 +9,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol"; 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-// import "./1155.sol"; //Dota2Collection
-// import "./721.sol"; //Flower721NFT
 
 contract NFTMarketplace is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -51,9 +49,8 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
     mapping (uint => BatchNFTSale) public batchTokens; 
     mapping (address => bool) public sellers; 
 
-    constructor(address _paymentToken) {
+    constructor() {
         nonce = 1; //will count how many orders contract has
-        paymentToken = _paymentToken;
         fee = 10;  
     }
 
@@ -70,9 +67,10 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
         return batchTokens[_nonce].amounts; 
     }
 
-    function sellSingleNFT(address _seller, address _nftAddress, uint _tokenId, uint _amount, uint _price, string calldata _tokenType) external nonReentrant {
+    function sellSingleNFT(address _nftAddress, uint _tokenId, uint _amount, uint _price, string calldata _tokenType) external nonReentrant {
+        require(_amount > 0, "incorrect amount"); 
         NFTSale storage token = tokens[nonce];
-        token.seller = _seller;
+        token.seller = msg.sender;
         token.nftAddress = _nftAddress;
         token.tokenId = _tokenId;
         token.amount = _amount;
@@ -80,10 +78,11 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
         token.tokenType = _matchType(_tokenType);
         token.status = Status.Listed; 
         if (token.tokenType == Type.ERC721) {
-            IERC721(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
+            require(_amount == 1, "amount for ERC721 got to be 1");
+            IERC721(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId); 
         }
         else if (token.tokenType == Type.ERC1155) {
-            IERC1155(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId, _amount, "");
+            IERC1155(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId, _amount, ""); 
         }
         else { revert("something went wrong"); }
         sellers[msg.sender] = true; 
@@ -128,9 +127,10 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
         emit SaleClosed(_nonce);
     }
 
-    function sellBatchNFTs(address _seller, address _nftAddress, uint[] memory _tokenIds, uint[] memory _amounts, uint _price) external nonReentrant {
+    function sellBatchNFTs(address _nftAddress, uint[] memory _tokenIds, uint[] memory _amounts, uint _price) external nonReentrant {
+        _check1155amounts(_amounts); 
         BatchNFTSale storage token1155 = batchTokens[nonce];
-        token1155.seller = _seller;
+        token1155.seller = msg.sender;
         token1155.nftAddress = _nftAddress;
         token1155.tokenIds = _tokenIds;
         token1155.amounts = _amounts;
@@ -150,7 +150,7 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
         IERC20(paymentToken).safeTransfer(token1155.seller, bounty);
         IERC1155(token1155.nftAddress).safeBatchTransferFrom(address(this), msg.sender, viewBatchIds(_nonce), viewBatchAmounts(_nonce), "");
         sellers[token1155.seller] = false;
-        delete tokens[_nonce];
+        delete batchTokens[_nonce];
         emit BatchTokensSold(_nonce);
     }
 
@@ -165,11 +165,11 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
         emit BatchSaleClosed(_nonce);
     }
 
-    function changePaymentToken(address _token) external onlyOwner {
+    function setPaymentToken(address _token) external onlyOwner {
         paymentToken = _token;
     }
 
-    function setFee(uint _fee) public onlyOwner {
+    function setFee(uint _fee) external onlyOwner {
         fee = _fee; 
     }
 
@@ -189,6 +189,14 @@ contract NFTMarketplace is Ownable, ReentrancyGuard {
             result = result + batchTokens[_nonce].amounts[i]; 
         }
         return result; 
+    }
+
+    function _check1155amounts(uint[] memory arr) internal pure {
+        for(uint i = 0; i < arr.length; i++) {
+            if(arr[i] == 0) {
+                revert("can not sell 0 tokens"); 
+            }
+        }
     }
 
     function onERC1155Received(address, address, uint256, uint256, bytes memory) public virtual returns (bytes4) {
