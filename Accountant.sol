@@ -13,22 +13,22 @@ contract Accountant is Ownable {
 
     struct Catigory {
         string name;
-        mapping (address => int) catigorySpendings; 
+        mapping (address => uint) catigorySpendings; 
     }
 
-    mapping(address => mapping (incomeName => int)) incomes; 
+    mapping(address => mapping (incomeName => uint)) incomes; 
     mapping (string => Catigory) catigories;//Catigories names for example: health, food, clothes
-    mapping(address => int) balances;
+    mapping(address => uint) balances;
     //to look how many user spend for some category
-    function viewCategorySpendings(string calldata _catigoryName) external view returns(int) {
+    function viewCategorySpendings(string calldata _catigoryName) external view returns(uint) {
         return catigories[_catigoryName].catigorySpendings[msg.sender]; 
     } 
     //to look msg.sender balance(incomes - spendings)
-    function viewBalance() external view returns(int) {
+    function viewBalance() external view returns(uint) {
         return balances[msg.sender]; 
     }
     //to look entire balance of salary/investings/other income 
-    function viewIncome(incomeName _incomeName) external view returns(int) {
+    function viewIncome(incomeName _incomeName) external view returns(uint) {
         return incomes[msg.sender][_incomeName]; 
     }
     //to look all existing categories 
@@ -42,14 +42,14 @@ contract Accountant is Ownable {
         catigorieNames.push(_name);
     }
     //_incomeName: 0 = salary, 1 = investings, 2 = other
-    function addIncome(int _amount, incomeName _incomeName) external {
+    function addIncome(uint _amount, incomeName _incomeName) external {
         require(_amount > 0, "income can not be 0 or less");
         incomes[msg.sender][_incomeName] += _amount;
         balances[msg.sender] += _amount;   
     }
 
     function addSpending(
-        int _amount, 
+        uint _amount, 
         string calldata _catigoryName
         ) contains(_catigoryName, catigories[_catigoryName].name) external { 
         require(_amount > 0, "amount can not be 0 or less"); 
