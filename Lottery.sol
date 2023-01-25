@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
+
+//deployed on goerli 0xFccc47Fd2FA2Cdf7b218045486B886188749fA32
 
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
