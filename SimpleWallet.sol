@@ -25,6 +25,7 @@ contract SimpleWallet is Ownable, ReentrancyGuard {
 
     fallback() external {}
     receive() external payable {
+        ethBalances[msg.sender] += msg.value;
         emit MoneyReceived(msg.sender, msg.value);
     }
 
@@ -56,7 +57,7 @@ contract SimpleWallet is Ownable, ReentrancyGuard {
         emit NewToken(_token);
     }
 
-    function depositToken(address _token, uint _amount) public nonReentrant {
+    function depositToken(address _token, uint _amount) public {
         require(_amount > 0, "Can not deposit 0 tokens");
         Token storage token = tokens[_token];
         TransferHelper.safeTransferFrom(_token, msg.sender, address(this), _amount);
@@ -69,7 +70,7 @@ contract SimpleWallet is Ownable, ReentrancyGuard {
         ethBalances[msg.sender] += msg.value; 
     }
 
-    function withdrawToken(address _token, uint _amount) public nonReentrant {                
+    function withdrawToken(address _token, uint _amount) public {                
         Token storage token = tokens[_token];
         require(_amount > 0, "Can not withdraw 0 tokens"); 
         require(token.balances[msg.sender] >= _amount, "Not enough token balance");  //checks if user deposited tokens
