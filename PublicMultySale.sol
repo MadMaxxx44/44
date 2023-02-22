@@ -4,11 +4,10 @@
 
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol"; 
+import "@openzeppelin/contracts/access/Ownable.sol"; 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"; 
 
-contract PublicMultySale is Ownable, ReentrancyGuard {   
+contract PublicMultySale is Ownable {   
     using SafeERC20 for IERC20; 
     uint public Fee; //how many % contract take from seller 
     uint entryThreshold;//minimum tokens amount that users can sell
@@ -81,7 +80,7 @@ contract PublicMultySale is Ownable, ReentrancyGuard {
         _remove(_token, tokensForPrepayment); 
     }
     //send 10% of amount that user want to sell to owner as prepayment
-    function sendPrepayment(IERC20 _token, uint _howManyYouWantToSell) public nonReentrant {                 //first user send prepayment to owner 
+    function sendPrepayment(IERC20 _token, uint _howManyYouWantToSell) public {                 //first user send prepayment to owner 
         require(tokensForPrepayments[_token] == true, "check viewTokensForPrepayment");  
         require(_howManyYouWantToSell >= entryThreshold, "not enough amount of tokens"); 
         IERC20(_token).safeTransferFrom(msg.sender, owner(), calculatePrepayment(_howManyYouWantToSell));
@@ -89,7 +88,7 @@ contract PublicMultySale is Ownable, ReentrancyGuard {
         emit PrePaymentSent(msg.sender);
     }
     
-    function addToken(uint _tokenBalance, uint _limitForUser, IERC20 _tokenAddress) public nonReentrant {    //after he can add token he wants to sell
+    function addToken(uint _tokenBalance, uint _limitForUser, IERC20 _tokenAddress) public {    //after he can add token he wants to sell
         require(tokens[_tokenAddress].tokenBalance == 0, "token already on sale"); 
         require(prePayments[msg.sender] == calculatePrepayment(_tokenBalance), "incorrect token balance or you need to send prepayment");
         require(_limitForUser <= _tokenBalance, "incorrect limit");  
